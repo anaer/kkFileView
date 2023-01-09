@@ -135,7 +135,8 @@ public class OfficeFilePreviewImpl implements FilePreview {
         model.addAttribute("currentUrl", imageUrls.get(0));
         if (officePreviewTypeImage.equals(officePreviewType)) {
             // PPT 图片模式使用专用预览页面
-            return (isPPT ? PPT_FILE_PREVIEW_PAGE : OFFICE_PICTURE_FILE_PREVIEW_PAGE);
+            // return (isPPT ? PPT_FILE_PREVIEW_PAGE : OFFICE_PICTURE_FILE_PREVIEW_PAGE);
+            return OFFICE_PICTURE_FILE_PREVIEW_PAGE;
         } else {
             return PICTURE_FILE_PREVIEW_PAGE;
         }

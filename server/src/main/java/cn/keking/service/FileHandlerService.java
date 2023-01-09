@@ -10,9 +10,6 @@ import com.aspose.cad.Color;
 import com.aspose.cad.fileformats.cad.CadDrawTypeMode;
 import com.aspose.cad.imageoptions.CadRasterizationOptions;
 import com.aspose.cad.imageoptions.PdfOptions;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.rendering.ImageType;
-import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import jodd.io.FileUtil;
+import org.icepdf.core.exceptions.PDFException;
+import org.icepdf.core.exceptions.PDFSecurityException;
+import org.icepdf.core.pobjects.Document;
+import org.icepdf.core.util.GraphicsRenderingHints;
 
 /**
  * @author yudian-it
@@ -174,45 +176,70 @@ public class FileHandlerService {
     public List<String> pdf2jpg(String pdfFilePath, String pdfName, String baseUrl) {
         List<String> imageUrls = new ArrayList<>();
         Integer imageCount = this.getConvertedPdfImage(pdfFilePath);
+        logger.info("pdf:{} imageCount:{}", pdfFilePath, imageCount);
         String imageFileSuffix = ".jpg";
         String pdfFolder = pdfName.substring(0, pdfName.length() - 4);
         String urlPrefix;
+
+        int index = pdfFilePath.lastIndexOf(".");
+        String folder = pdfFilePath.substring(0, index);
+
+        File path = new File(folder);
+
         try {
             urlPrefix = baseUrl + URLEncoder.encode(pdfFolder, uriEncoding).replaceAll("\\+", "%20");
         } catch (UnsupportedEncodingException e) {
             logger.error("UnsupportedEncodingException", e);
             urlPrefix = baseUrl + pdfFolder;
         }
-        if (imageCount != null && imageCount > 0) {
-            for (int i = 0; i < imageCount; i++) {
-                imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
+
+        if(path.exists()){
+            String imageFilePath;
+            if (imageCount != null && imageCount > 0) {
+                for (int i = 0; i < imageCount; i++) {
+                    imageFilePath = folder + File.separator + i + imageFileSuffix;
+                    if(FileUtil.isExistingFile(new File(imageFilePath))){
+                        imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
+                    }else{
+                        // 如果文件不存在, 直接清空列表, 跳出循环
+                        imageUrls.clear();
+                        break;
+                    }
+                }
             }
+        }
+        // 如果图片列表不为空 直接返回
+        if(!imageUrls.isEmpty()){
             return imageUrls;
         }
+
+        float scale = 1f;//缩放比例
+        float rotation = 0f;//旋转角度
+        Document doc = new Document();
         try {
-            File pdfFile = new File(pdfFilePath);
-            PDDocument doc = PDDocument.load(pdfFile);
+            doc.setFile(pdfFilePath);
             int pageCount = doc.getNumberOfPages();
-            PDFRenderer pdfRenderer = new PDFRenderer(doc);
+            logger.info("pdf:{} pageCount:{}", pdfFilePath, pageCount);
 
-            int index = pdfFilePath.lastIndexOf(".");
-            String folder = pdfFilePath.substring(0, index);
-
-            File path = new File(folder);
             if (!path.exists() && !path.mkdirs()) {
                 logger.error("创建转换文件【{}】目录失败，请检查目录权限！", folder);
             }
+
             String imageFilePath;
             for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
                 imageFilePath = folder + File.separator + pageIndex + imageFileSuffix;
-                BufferedImage image = pdfRenderer.renderImageWithDPI(pageIndex, 105, ImageType.RGB);
+                BufferedImage image = (BufferedImage) doc.getPageImage(pageIndex, GraphicsRenderingHints.SCREEN, org.icepdf.core.pobjects.Page.BOUNDARY_CROPBOX, rotation, scale);
                 ImageIOUtil.writeImage(image, imageFilePath, 105);
                 imageUrls.add(urlPrefix + "/" + pageIndex + imageFileSuffix);
+                image.flush();
             }
-            doc.close();
             this.addConvertedPdfImage(pdfFilePath, pageCount);
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException | PDFException | PDFSecurityException e) {
             logger.error("Convert pdf to jpg exception, pdfFilePath：{}", pdfFilePath, e);
+        } finally {
+            if(doc != null){
+                doc.dispose();
+            }
         }
         return imageUrls;
     }

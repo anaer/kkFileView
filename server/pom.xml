@@ -25,6 +25,18 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.icepdf.os</groupId>
+            <artifactId>icepdf-core</artifactId>
+            <version>${icepdf.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.icepdf.os</groupId>
+            <artifactId>icepdf-viewer</artifactId>
+            <version>${icepdf.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.jodconverter</groupId>
             <artifactId>jodconverter-local</artifactId>
             <version>${jodconverter.version}</version>
@@ -322,7 +334,7 @@
                 <configuration>
                     <appendAssemblyId>false</appendAssemblyId>
                     <descriptors>
-                        <descriptor>src/main/assembly/dist-win32.xml</descriptor>
+                        <!-- <descriptor>src/main/assembly/dist-win32.xml</descriptor> -->
                         <descriptor>src/main/assembly/dist-linux.xml</descriptor>
                     </descriptors>
                 </configuration>
