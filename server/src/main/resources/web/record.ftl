@@ -33,7 +33,6 @@
           <ul class="nav navbar-nav">
             <li><a href="./index">首页</a></li>
             <li class="active"><a href="./record">版本发布记录</a></li>
-            <li><a href="./comment">相关交流</a></li>
           </ul>
         </div>
       </div>
