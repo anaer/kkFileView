@@ -30,6 +30,8 @@ import java.util.List;
 
 import static cn.keking.service.FilePreview.PICTURE_FILE_PREVIEW_PAGE;
 
+import cn.keking.config.ConfigConstants;
+
 /**
  * @author yudian-it
  */
@@ -171,7 +173,13 @@ public class OnlinePreviewController {
     @ResponseBody
     public String addQueueTask(String url) {
         logger.info("添加转码队列url：{}", url);
-        cacheService.addQueueTask(url);
+
+        String host = WebUtils.getHost(url);
+        if (host != null && (ConfigConstants.getTrustHostSet().isEmpty() || ConfigConstants.getTrustHostSet().contains(host))) {
+            cacheService.addQueueTask(url);
+        } else {
+            return "invalid url or untrust host";
+        }
         return "success";
     }
 }
