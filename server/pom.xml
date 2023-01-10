@@ -327,6 +327,7 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -334,7 +335,7 @@
                 <configuration>
                     <appendAssemblyId>false</appendAssemblyId>
                     <descriptors>
-                        <!-- <descriptor>src/main/assembly/dist-win32.xml</descriptor> -->
+                        <descriptor>src/main/assembly/dist-win32.xml</descriptor>
                         <descriptor>src/main/assembly/dist-linux.xml</descriptor>
                     </descriptors>
                 </configuration>
@@ -348,6 +349,7 @@
                     </execution>
                 </executions>
             </plugin>
+            -->
         </plugins>
     </build>
 </project>
