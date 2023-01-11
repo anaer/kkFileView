@@ -44,7 +44,8 @@ public class PictureFilePreviewImpl implements FilePreview {
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             } else {
-                String file = fileHandlerService.getRelativePath(response.getContent());
+                // 需要使用URL的相对路径, 原文件路径的相对路径, 本机没有展示出来
+                String file = KkFileUtils.getUrlRelativePath(response.getContent());
                 imgUrls.clear();
                 imgUrls.add(file);
                 model.addAttribute("imgUrls", imgUrls);

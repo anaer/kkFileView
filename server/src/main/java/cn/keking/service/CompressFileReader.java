@@ -137,6 +137,10 @@ public class CompressFileReader {
         List<String> imgUrls = new ArrayList<>();
         String baseUrl = BaseUrlFilter.getBaseUrl();
         try {
+            String urlRelativePath = KkFileUtils.getUrlRelativePath(filePath);
+            int index = urlRelativePath.lastIndexOf("/");
+            String path = urlRelativePath.substring(0, index);
+
             List<FileHeaderRar> items = getRar4Paths(filePath);
             String archiveFileName = fileHandlerService.getFileNameFromPath(filePath);
             List<Map<String, FileHeaderRar>> headersToBeExtract = new ArrayList<>();
@@ -152,10 +156,10 @@ public class CompressFileReader {
                 String parentName = getLast2FileName(fullName, archiveFileName);
                 FileType type = FileType.typeFromUrl(childName);
                 if (type.equals(FileType.PICTURE)) {
-                    imgUrls.add(baseUrl + childName);
+                    imgUrls.add(baseUrl + path + "/" + childName);
                 }
                 FileNode node =
-                        new FileNode(originName, childName, parentName, new ArrayList<>(), directory, fileKey);
+                        new FileNode(originName, path + "/" + childName, parentName, new ArrayList<>(), directory, fileKey);
                 addNodes(appender, parentName, node);
                 appender.put(childName, node);
             }

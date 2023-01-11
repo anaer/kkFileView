@@ -4,6 +4,8 @@ import io.mola.galimatias.GalimatiasParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.Base64Utils;
 
+import cn.hutool.core.net.URLDecoder;
+
 import javax.servlet.ServletRequest;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
@@ -200,11 +202,12 @@ public class WebUtils {
      */
     public static String decodeUrl(String source) {
         String url = decodeBase64String(source, StandardCharsets.UTF_8);
-        if (! StringUtils.isNotBlank(url)){
+        if (StringUtils.isBlank(url)){
             return null;
         }
 
-        return url;
+        // return url;
+        return URLDecoder.decode(url, Charset.forName("utf-8"));
     }
 
     /**

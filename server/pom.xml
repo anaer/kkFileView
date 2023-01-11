@@ -25,6 +25,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>${hutool-all.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.icepdf.os</groupId>
             <artifactId>icepdf-core</artifactId>
             <version>${icepdf.version}</version>
@@ -34,6 +40,12 @@
             <groupId>org.icepdf.os</groupId>
             <artifactId>icepdf-viewer</artifactId>
             <version>${icepdf.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.levigo.jbig2</groupId>
+            <artifactId>levigo-jbig2-imageio</artifactId>
+            <version>${levigo-jbig2-imageio.version}</version>
         </dependency>
 
         <dependency>

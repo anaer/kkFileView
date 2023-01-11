@@ -1,5 +1,6 @@
 package cn.keking.service.impl;
 
+import cn.hutool.core.codec.Base64Encoder;
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
 import cn.keking.model.ReturnResponse;
@@ -14,6 +15,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.util.HtmlUtils;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -34,8 +36,8 @@ public class SimTextFilePreviewImpl implements FilePreview {
     @Override
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
         String fileName = fileAttribute.getName();
-        String filePath = FILE_DIR + fileName;
         if (!fileHandlerService.listConvertedFiles().containsKey(fileName) || !ConfigConstants.isCacheEnabled()) {
+            String filePath = KkFileUtils.getDateDir(FILE_DIR, fileName);
             ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
@@ -54,11 +56,15 @@ public class SimTextFilePreviewImpl implements FilePreview {
         }
         String  fileData = null;
         try {
+            String filePath = fileHandlerService.getConvertedFile(fileName);
             fileData = HtmlUtils.htmlEscape(textData(filePath,fileName));
         } catch (IOException e) {
             e.printStackTrace();
         }
-        model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes()));
+        
+        // model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes()));
+        String textData = Base64Encoder.encode(fileData, Charset.forName("utf-8"));
+        model.addAttribute("textData", textData);
         return TXT_FILE_PREVIEW_PAGE;
     }
 

@@ -5,6 +5,7 @@ import cn.keking.model.FileAttribute;
 import cn.keking.model.ReturnResponse;
 import cn.keking.service.FilePreview;
 import cn.keking.utils.DownloadUtils;
+import cn.keking.utils.KkFileUtils;
 import cn.keking.service.FileHandlerService;
 import cn.keking.web.filter.BaseUrlFilter;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,8 @@ public class PdfFilePreviewImpl implements FilePreview {
         String officePreviewType = fileAttribute.getOfficePreviewType();
         String baseUrl = BaseUrlFilter.getBaseUrl();
         String pdfName = fileName.substring(0, fileName.lastIndexOf(".") + 1) + "pdf";
-        String outFilePath = FILE_DIR + pdfName;
+        String outFilePath = KkFileUtils.getDateDir(FILE_DIR, pdfName);
+
         if (OfficeFilePreviewImpl.OFFICE_PREVIEW_TYPE_IMAGE.equals(officePreviewType) || OfficeFilePreviewImpl.OFFICE_PREVIEW_TYPE_ALL_IMAGES.equals(officePreviewType)) {
             //当文件不存在时，就去下载
             if (!fileHandlerService.listConvertedFiles().containsKey(pdfName) || !ConfigConstants.isCacheEnabled()) {
@@ -67,7 +69,7 @@ public class PdfFilePreviewImpl implements FilePreview {
                     if (response.isFailure()) {
                         return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
                     }
-                    model.addAttribute("pdfUrl", fileHandlerService.getRelativePath(response.getContent()));
+                    model.addAttribute("pdfUrl", KkFileUtils.getUrlRelativePath(response.getContent()));
                     if (ConfigConstants.isCacheEnabled()) {
                         // 加入缓存
                         fileHandlerService.addConvertedFile(pdfName, fileHandlerService.getRelativePath(outFilePath));

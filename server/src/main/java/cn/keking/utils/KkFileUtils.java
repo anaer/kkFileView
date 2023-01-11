@@ -4,7 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.HtmlUtils;
-
+import cn.hutool.core.date.DateUtil;
+import cn.keking.config.ConfigConstants;
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
@@ -172,6 +173,34 @@ public class KkFileUtils {
             return false;
         }
         return true;
+    }
+
+    /**
+     * 获取带日期文件路径.
+     * @param fileDir 目录路径
+     * @param fileName 文件名
+     * @return 文件路径
+     */
+    public static String getDateDir(String fileDir, String fileName){
+        int year = DateUtil.thisYear();
+        // 月份从0开始
+        int month = DateUtil.thisMonth() + 1; 
+        int day = DateUtil.thisDayOfMonth();
+
+        return fileDir + year + File.separator + (month < 10 ? "0" + month : month) + File.separator + day + File.separator + fileName;
+    }
+
+    /**
+     * 获取URL相对路径
+     *
+     * @param absolutePath 文件绝对路径
+     * @return URL相对路径
+     * 
+     * @see FileHandlerService.getRelativePath(String absolutePath)
+     */
+    public static String getUrlRelativePath(String absolutePath) {
+        String fileDir = ConfigConstants.getFileDir();
+        return absolutePath.substring(fileDir.length()).replace("\\", "/");
     }
 
 }

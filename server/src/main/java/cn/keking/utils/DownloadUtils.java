@@ -3,13 +3,11 @@ package cn.keking.utils;
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
 import cn.keking.model.ReturnResponse;
-import cn.keking.service.FileHandlerService;
 import io.mola.galimatias.GalimatiasParseException;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
-import org.springframework.web.util.HtmlUtils;
 
 import java.io.*;
 import java.net.*;
@@ -101,7 +99,8 @@ public class DownloadUtils {
         if (KkFileUtils.isIllegalFileName(fileName)) {
             return null;
         }
-        String realPath = fileDir + fileName;
+
+        String realPath = KkFileUtils.getDateDir(fileDir, fileName);
         File dirFile = new File(fileDir);
         if (!dirFile.exists() && !dirFile.mkdirs()) {
             logger.error("创建目录【{}】失败,可能是权限不够，请检查", fileDir);

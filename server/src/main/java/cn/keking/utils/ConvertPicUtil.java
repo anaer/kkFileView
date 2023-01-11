@@ -82,10 +82,10 @@ public class ConvertPicUtil {
                 String strJpg;
                 if (intTifCount == 1) {
                     strJpg = strJpgPath + "/" + strFilePrefix + ".jpg";
-                    strJpgUrl = strFilePrefix + ".jpg";
+                    strJpgUrl = KkFileUtils.getUrlRelativePath(strJpg);
                 } else {
                     strJpg = strJpgPath + "/" + i + ".jpg";
-                    strJpgUrl = strFilePrefix + "/" + i + ".jpg";
+                    strJpgUrl = KkFileUtils.getUrlRelativePath(strJpg);
                 }
 
                 File fileJpg = new File(strJpg);

@@ -18,6 +18,7 @@ public class FileAttribute {
     private String officePreviewType = ConfigConstants.getOfficePreviewType();
     private String tifPreviewType;
     private Boolean skipDownLoad = false;
+    private String uniqueKey;
 
     public FileAttribute() {
     }
@@ -117,4 +118,12 @@ public class FileAttribute {
         this.tifPreviewType = previewType;
     }
 
+    public String getUniqueKey() {
+        return uniqueKey;
+    }
+
+    public void setUniqueKey(String uniqueKey) {
+        this.uniqueKey = uniqueKey;
+    }
+    
 }

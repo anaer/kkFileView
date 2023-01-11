@@ -7,13 +7,15 @@ import cn.keking.service.FileHandlerService;
 import cn.keking.service.FilePreview;
 import cn.keking.service.OfficeToPdfService;
 import cn.keking.utils.DownloadUtils;
+import cn.keking.utils.KkFileUtils;
 import cn.keking.utils.OfficeUtils;
 import cn.keking.web.filter.BaseUrlFilter;
 import org.jodconverter.core.office.OfficeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
-
 import java.util.List;
 
 /**
@@ -22,6 +24,8 @@ import java.util.List;
  */
 @Service
 public class OfficeFilePreviewImpl implements FilePreview {
+
+    private static final Logger logger = LoggerFactory.getLogger(OfficeFilePreviewImpl.class);
 
     public static final String OFFICE_PREVIEW_TYPE_IMAGE = "image";
     public static final String OFFICE_PREVIEW_TYPE_ALL_IMAGES = "allImages";
@@ -49,7 +53,8 @@ public class OfficeFilePreviewImpl implements FilePreview {
         boolean isHtml = suffix.equalsIgnoreCase("xls") || suffix.equalsIgnoreCase("xlsx") || suffix.equalsIgnoreCase("csv");
         String pdfName = fileName.substring(0, fileName.lastIndexOf(".") + 1) + (isHtml ? "html" : "pdf");
         String cacheFileName = userToken == null ? pdfName : userToken + "_" + pdfName;
-        String outFilePath = FILE_DIR + cacheFileName;
+
+        String outFilePath = KkFileUtils.getDateDir(FILE_DIR, cacheFileName);
 
         // 下载远程文件到本地，如果文件在本地已存在不会重复下载
         ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);
@@ -120,13 +125,13 @@ public class OfficeFilePreviewImpl implements FilePreview {
             return getPreviewType(model, fileAttribute, officePreviewType, baseUrl, cacheFileName, outFilePath, fileHandlerService, OFFICE_PREVIEW_TYPE_IMAGE, otherFilePreview);
         }
 
-        model.addAttribute("pdfUrl", cacheFileName);
+        model.addAttribute("pdfUrl", KkFileUtils.getUrlRelativePath(outFilePath));
         return isHtml ? EXEL_FILE_PREVIEW_PAGE : PDF_FILE_PREVIEW_PAGE;
     }
 
     static String getPreviewType(Model model, FileAttribute fileAttribute, String officePreviewType, String baseUrl, String pdfName, String outFilePath, FileHandlerService fileHandlerService, String officePreviewTypeImage, OtherFilePreviewImpl otherFilePreview) {
-        String suffix = fileAttribute.getSuffix();
-        boolean isPPT = suffix.equalsIgnoreCase("ppt") || suffix.equalsIgnoreCase("pptx");
+        // String suffix = fileAttribute.getSuffix();
+        // boolean isPPT = suffix.equalsIgnoreCase("ppt") || suffix.equalsIgnoreCase("pptx");
         List<String> imageUrls = fileHandlerService.pdf2jpg(outFilePath, pdfName, baseUrl);
         if (imageUrls == null || imageUrls.size() < 1) {
             return otherFilePreview.notSupportedFile(model, fileAttribute, "office转图片异常，请联系管理员");

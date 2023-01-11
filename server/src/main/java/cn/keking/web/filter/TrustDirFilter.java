@@ -1,5 +1,6 @@
 package cn.keking.web.filter;
 
+import cn.hutool.core.util.StrUtil;
 import cn.keking.config.ConfigConstants;
 import cn.keking.utils.WebUtils;
 import io.mola.galimatias.GalimatiasParseException;
@@ -64,6 +65,10 @@ public class TrustDirFilter implements Filter {
             if ("file".equals(url.getProtocol().toLowerCase(Locale.ROOT))) {
                 String filePath = URLDecoder.decode(url.getPath(), StandardCharsets.UTF_8.name());
                 if (OSUtils.IS_OS_WINDOWS) {
+                    // URL 标准规定 file URL 采用 file://<host>/<path> 形式。作为一个特例，<host> 可以是空字符串，它被解释为“解释该 URL 的计算机”。因此，file URL 通常具有三个斜杠 (///)。
+                    if(StrUtil.startWith(filePath, '/')){
+                        filePath = StrUtil.removePrefix(filePath, "/");
+                    }
                     filePath = filePath.replaceAll("/", "\\\\");
                 }
                 return filePath.startsWith(ConfigConstants.getFileDir()) || filePath.startsWith(ConfigConstants.getLocalPreviewDir());

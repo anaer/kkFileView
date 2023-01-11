@@ -29,4 +29,5 @@ nbdist/
 
 server/src/main/cache/
 server/src/main/file/
-server/libreoffice/
+# 软链接文件
+server/libreoffice

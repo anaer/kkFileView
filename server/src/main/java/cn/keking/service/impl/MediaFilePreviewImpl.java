@@ -1,12 +1,13 @@
 package cn.keking.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
 import cn.keking.model.FileType;
 import cn.keking.model.ReturnResponse;
 import cn.keking.service.FilePreview;
-import cn.keking.utils.ConfigUtils;
 import cn.keking.utils.DownloadUtils;
+import cn.keking.utils.KkFileUtils;
 import cn.keking.service.FileHandlerService;
 import cn.keking.web.filter.BaseUrlFilter;
 import org.bytedeco.ffmpeg.global.avcodec;
@@ -38,23 +39,25 @@ public class MediaFilePreviewImpl implements FilePreview {
 
     @Override
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
-        // 不是http开头，浏览器不能直接访问，需下载到本地
-        if (url != null && !url.toLowerCase().startsWith("http")) {
+        String mediaPath = "";
+        // 下载视频文件 1.链接不是http开头， 浏览器不能直接访问 2. 是http开头 但是需要转码
+        if (!StrUtil.startWithIgnoreCase(url, "http") || checkNeedConvert(fileAttribute.getSuffix())) {
             ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileAttribute.getName());
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             } else {
-                url=BaseUrlFilter.getBaseUrl() + fileHandlerService.getRelativePath(response.getContent());
+                mediaPath = response.getContent();
+                url = BaseUrlFilter.getBaseUrl() + KkFileUtils.getUrlRelativePath(response.getContent());
                 fileAttribute.setUrl(url);
             }
         }
 
         if(checkNeedConvert(fileAttribute.getSuffix())){
-            url=convertUrl(fileAttribute);
+            url = convertUrl(fileAttribute, mediaPath);
         }else{
             //正常media类型
             String[] medias = ConfigConstants.getMedia();
-            for(String media:medias){
+            for(String media : medias){
                 if(media.equals(fileAttribute.getSuffix())){
                     model.addAttribute("mediaUrl", url);
                     return MEDIA_FILE_PREVIEW_PAGE;
@@ -71,7 +74,7 @@ public class MediaFilePreviewImpl implements FilePreview {
      * 返回处理过后的url
      * @return url
      */
-    private String convertUrl(FileAttribute fileAttribute) {
+    private String convertUrl(FileAttribute fileAttribute, String mediaPath) {
         String url = fileAttribute.getUrl();
         if(fileHandlerService.listConvertedMedias().containsKey(url)){
             url= fileHandlerService.getConvertedMedias(url);
@@ -79,10 +82,10 @@ public class MediaFilePreviewImpl implements FilePreview {
             if(!fileHandlerService.listConvertedMedias().containsKey(url)){
                 synchronized(LOCK){
                     if(!fileHandlerService.listConvertedMedias().containsKey(url)){
-                        String convertedUrl=convertToMp4(fileAttribute);
+                        String convertedUrl = convertToMp4(fileAttribute, mediaPath);
                         //加入缓存
-                        fileHandlerService.addConvertedMedias(url,convertedUrl);
-                        url=convertedUrl;
+                        fileHandlerService.addConvertedMedias(url, convertedUrl);
+                        url = convertedUrl;
                     }
                 }
             }
@@ -115,12 +118,9 @@ public class MediaFilePreviewImpl implements FilePreview {
      * @param fileAttribute
      * @return
      */
-    private static String convertToMp4(FileAttribute fileAttribute) {
-
-        //说明：这里做临时处理，取上传文件的目录
-        String homePath = ConfigUtils.getHomePath();
-        String filePath = homePath+File.separator+"file"+File.separator+"demo"+File.separator+fileAttribute.getName();
-        String convertFileName=fileAttribute.getUrl().replace(fileAttribute.getSuffix(),"mp4");
+    private static String convertToMp4(FileAttribute fileAttribute, String mediaPath) {
+        String filePath = mediaPath;
+        String convertFileName = fileAttribute.getUrl().replace(fileAttribute.getSuffix(),"mp4");
 
         File file=new File(filePath);
         FFmpegFrameGrabber frameGrabber = new FFmpegFrameGrabber(file);
@@ -129,10 +129,10 @@ public class MediaFilePreviewImpl implements FilePreview {
         FFmpegFrameRecorder recorder = null;
         try {
             fileName = file.getAbsolutePath().replace(fileAttribute.getSuffix(),"mp4");
-            File desFile=new File(fileName);
+            File desFile = new File(fileName);
             //判断一下防止穿透缓存
             if(desFile.exists()){
-                return fileName;
+                return convertFileName;
             }
 
             frameGrabber.start();

@@ -1,5 +1,6 @@
 package cn.keking.service;
 
+import cn.hutool.crypto.SecureUtil;
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
 import cn.keking.model.FileType;
@@ -10,6 +11,9 @@ import com.aspose.cad.Color;
 import com.aspose.cad.fileformats.cad.CadDrawTypeMode;
 import com.aspose.cad.imageoptions.CadRasterizationOptions;
 import com.aspose.cad.imageoptions.PdfOptions;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +29,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import jodd.io.FileUtil;
 import org.icepdf.core.exceptions.PDFException;
 import org.icepdf.core.exceptions.PDFSecurityException;
-import org.icepdf.core.pobjects.Document;
+import cn.keking.icepdf.Document;
 import org.icepdf.core.util.GraphicsRenderingHints;
 
 /**
@@ -173,43 +176,86 @@ public class FileHandlerService {
      * @param baseUrl 基础访问地址
      * @return 图片访问集合
      */
-    public List<String> pdf2jpg(String pdfFilePath, String pdfName, String baseUrl) {
+    public List<String> pdf2jpgbak(String pdfFilePath, String pdfName, String baseUrl) {
         List<String> imageUrls = new ArrayList<>();
         Integer imageCount = this.getConvertedPdfImage(pdfFilePath);
-        logger.info("pdf:{} imageCount:{}", pdfFilePath, imageCount);
         String imageFileSuffix = ".jpg";
         String pdfFolder = pdfName.substring(0, pdfName.length() - 4);
         String urlPrefix;
-
-        int index = pdfFilePath.lastIndexOf(".");
-        String folder = pdfFilePath.substring(0, index);
-
-        File path = new File(folder);
-
         try {
             urlPrefix = baseUrl + URLEncoder.encode(pdfFolder, uriEncoding).replaceAll("\\+", "%20");
         } catch (UnsupportedEncodingException e) {
             logger.error("UnsupportedEncodingException", e);
             urlPrefix = baseUrl + pdfFolder;
         }
-
-        if(path.exists()){
-            String imageFilePath;
-            if (imageCount != null && imageCount > 0) {
-                for (int i = 0; i < imageCount; i++) {
-                    imageFilePath = folder + File.separator + i + imageFileSuffix;
-                    if(FileUtil.isExistingFile(new File(imageFilePath))){
-                        imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
-                    }else{
-                        // 如果文件不存在, 直接清空列表, 跳出循环
-                        imageUrls.clear();
-                        break;
-                    }
-                }
+        if (imageCount != null && imageCount > 0) {
+            for (int i = 0; i < imageCount; i++) {
+                imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
             }
+            return imageUrls;
         }
-        // 如果图片列表不为空 直接返回
-        if(!imageUrls.isEmpty()){
+        try {
+            File pdfFile = new File(pdfFilePath);
+            PDDocument doc = PDDocument.load(pdfFile);
+            int pageCount = doc.getNumberOfPages();
+            PDFRenderer pdfRenderer = new PDFRenderer(doc);
+
+            int index = pdfFilePath.lastIndexOf(".");
+            String folder = pdfFilePath.substring(0, index);
+
+            File path = new File(folder);
+            if (!path.exists() && !path.mkdirs()) {
+                logger.error("创建转换文件【{}】目录失败，请检查目录权限！", folder);
+            }
+            String imageFilePath;
+            for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                imageFilePath = folder + File.separator + pageIndex + imageFileSuffix;
+                BufferedImage image = pdfRenderer.renderImageWithDPI(pageIndex, 105, ImageType.RGB);
+                ImageIOUtil.writeImage(image, imageFilePath, 105);
+                imageUrls.add(urlPrefix + "/" + pageIndex + imageFileSuffix);
+            }
+            doc.close();
+            this.addConvertedPdfImage(pdfFilePath, pageCount);
+        } catch (IOException e) {
+            logger.error("Convert pdf to jpg exception, pdfFilePath：{}", pdfFilePath, e);
+        }
+        return imageUrls;
+    }
+
+    /**
+     *  pdf文件转换成jpg图片集
+     * @param pdfFilePath pdf文件路径
+     * @param pdfName pdf文件名称
+     * @param baseUrl 基础访问地址
+     * @return 图片访问集合
+     */
+    public List<String> pdf2jpg(String pdfFilePath, String pdfName, String baseUrl) {
+        List<String> imageUrls = new ArrayList<>();
+        Integer imageCount = this.getConvertedPdfImage(pdfFilePath);
+        logger.info("pdf:{} imageCount:{}", pdfFilePath, imageCount);
+        String imageFileSuffix = ".jpg";
+        // String pdfFolder = pdfName.substring(0, pdfName.length() - 4);
+        String urlPrefix = baseUrl;
+
+        int index = pdfFilePath.lastIndexOf(".");
+        String folder = pdfFilePath.substring(0, index);
+
+        File path = new File(folder);
+
+        // try {
+        //     urlPrefix = baseUrl + URLEncoder.encode(pdfFolder, uriEncoding).replaceAll("\\+", "%20");
+        // } catch (UnsupportedEncodingException e) {
+        //     logger.error("UnsupportedEncodingException", e);
+        //     urlPrefix = baseUrl + pdfFolder;
+        // }
+
+        if (imageCount != null && imageCount > 0) {
+            String imageFilePath;
+            for (int i = 0; i < imageCount; i++) {
+                imageFilePath = folder + File.separator + i + imageFileSuffix;
+                String relativePath = getRelativePath(imageFilePath);
+                imageUrls.add(urlPrefix + relativePath);
+            }
             return imageUrls;
         }
 
@@ -228,19 +274,28 @@ public class FileHandlerService {
             String imageFilePath;
             for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
                 imageFilePath = folder + File.separator + pageIndex + imageFileSuffix;
-                BufferedImage image = (BufferedImage) doc.getPageImage(pageIndex, GraphicsRenderingHints.SCREEN, org.icepdf.core.pobjects.Page.BOUNDARY_CROPBOX, rotation, scale);
-                ImageIOUtil.writeImage(image, imageFilePath, 105);
-                imageUrls.add(urlPrefix + "/" + pageIndex + imageFileSuffix);
-                image.flush();
+                try {
+                    BufferedImage image = (BufferedImage) doc.getPageImage(pageIndex, GraphicsRenderingHints.SCREEN, org.icepdf.core.pobjects.Page.BOUNDARY_CROPBOX, rotation, scale);
+                    ImageIOUtil.writeImage(image, imageFilePath, 105);
+                    imageUrls.add(urlPrefix + getRelativePath(imageFilePath));
+                    image.flush();
+                } catch (Exception e){
+                    // 本机因安全工具的防护规则出现过以下异常, 因此对此类异常 跳过继续处理
+                    // java.io.FileNotFoundException: ...\360.jpg (拒绝访问。)
+                    logger.error("生成图片异常:{}", imageFilePath, e);
+                }
             }
             this.addConvertedPdfImage(pdfFilePath, pageCount);
-        } catch (IOException | InterruptedException | PDFException | PDFSecurityException e) {
+        } catch (IOException | PDFException | PDFSecurityException e) {
             logger.error("Convert pdf to jpg exception, pdfFilePath：{}", pdfFilePath, e);
         } finally {
             if(doc != null){
                 doc.dispose();
             }
         }
+
+        // logger.info("pdf img urls:{}", imageUrls);
+
         return imageUrls;
     }
 
@@ -290,13 +345,12 @@ public class FileHandlerService {
         String fullFileName = WebUtils.getUrlParameterReg(url, "fullfilename");
         if (StringUtils.hasText(fullFileName)) {
             fileName = fullFileName;
-            type = FileType.typeFromFileName(fullFileName);
-            suffix = KkFileUtils.suffixFromFileName(fullFileName);
         } else {
             fileName = WebUtils.getFileNameFromURL(url);
-            type = FileType.typeFromUrl(url);
-            suffix = WebUtils.suffixFromUrl(url);
         }
+        type = FileType.typeFromFileName(fileName);
+        suffix = KkFileUtils.suffixFromFileName(fileName);
+
         if (url.contains("?fileKey=")) {
             attribute.setSkipDownLoad(true);
         }
@@ -307,10 +361,12 @@ public class FileHandlerService {
         }
         url = WebUtils.encodeUrlFileName(url);
         fileName =  KkFileUtils.htmlEscape(fileName);  //文件名处理
+        String uniqueKey = SecureUtil.md5(url);
         attribute.setType(type);
         attribute.setName(fileName);
         attribute.setSuffix(suffix);
         attribute.setUrl(url);
+        attribute.setUniqueKey(uniqueKey);
         if (req != null) {
             String officePreviewType = req.getParameter("officePreviewType");
             String fileKey = WebUtils.getUrlParameterReg(url,"fileKey");
