@@ -54,8 +54,7 @@ public class OfficeFilePreviewImpl implements FilePreview {
         String outFilePath = null;
 
         /*
-         * 1. 缓存判断-如果文件已经进行转换过，就直接返回，否则执行转换
-         * 2. 缓存判断-加密文件基于userToken进行缓存，如果没有就不缓存
+         * 缓存判断-如果文件已经进行转换过，就直接返回，否则执行转换
          */
         if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
             String relativePath = fileHandlerService.getConvertedFile(uniqueKey);
