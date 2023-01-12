@@ -10,7 +10,14 @@ public class FileAttribute {
 
     private FileType type;
     private String suffix;
+    /**
+     * 原始文件名
+     */
     private String name;
+    /**
+     * 根据uniqueKey生成的新文件名
+     */
+    private String fileName;
     private String url;
     private String fileKey;
     private String filePassword;
@@ -125,5 +132,13 @@ public class FileAttribute {
     public void setUniqueKey(String uniqueKey) {
         this.uniqueKey = uniqueKey;
     }
-    
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
 }

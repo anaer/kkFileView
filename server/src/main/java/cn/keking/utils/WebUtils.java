@@ -5,8 +5,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.Base64Utils;
 
 import cn.hutool.core.net.URLDecoder;
-
 import javax.servlet.ServletRequest;
+
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -91,18 +92,32 @@ public class WebUtils {
      * @return 文件名
      */
     public static String getFileNameFromURL(String url) {
-        if (url.toLowerCase().startsWith("file:")) {
-            try {
-                URL urlObj = new URL(url);
-                url = urlObj.getPath().substring(1);
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            }
+        try {
+            URL urlObj = new URL(url);
+            url = urlObj.getPath().substring(1);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
         }
         // 因为url的参数中可能会存在/的情况，所以直接url.lastIndexOf("/")会有问题
         // 所以先从？处将url截断，然后运用url.lastIndexOf("/")获取文件名
-        String noQueryUrl = url.substring(0, url.contains("?") ? url.indexOf("?") : url.length());
-        return noQueryUrl.substring(noQueryUrl.lastIndexOf("/") + 1);
+        return url.substring(url.lastIndexOf("/") + 1);
+    }
+
+    /**
+     * 从url中剥离出文件相对路径
+     * @param url 格式如: "http://127.0.0.1:8012/2023/01/12/2842f5ffefa351300eb0e47b2622f5a0/%E6%96%B0%E5%BB%BA%E6%96%87%E6%9C%AC%E6%96%87%E6%A1%A3.txt?fileKey=2842f5ffefa351300eb0e47b2622f5a0"
+     * @return 文件相对路径: "2023\01\12\2842f5ffefa351300eb0e47b2622f5a0\新建文本文档.txt"
+     */
+    public static String getFilePathFromURL(String url) {
+        try {
+            url = URLDecoder.decode(url, Charset.forName("utf-8"));
+            URL urlObj = new URL(url);
+            url = urlObj.getPath().substring(1);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        return url.replace("/", File.separator);
     }
 
 

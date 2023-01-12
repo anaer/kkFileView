@@ -35,52 +35,46 @@ public class SimTextFilePreviewImpl implements FilePreview {
     private static final String FILE_DIR = ConfigConstants.getFileDir();
     @Override
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
-        String fileName = fileAttribute.getName();
-        if (!fileHandlerService.listConvertedFiles().containsKey(fileName) || !ConfigConstants.isCacheEnabled()) {
-            String filePath = KkFileUtils.getDateDir(FILE_DIR, fileName);
+        String fileName = fileAttribute.getFileName();
+        String uniqueKey = fileAttribute.getUniqueKey();
+        String filePath = null;
+        if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+            filePath = fileHandlerService.getConvertedFile(uniqueKey);
+        } else {
             ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             }
-            filePath = response.getContent();
+            filePath = fileHandlerService.getRelativePath(response.getContent());
             if (ConfigConstants.isCacheEnabled()) {
-                fileHandlerService.addConvertedFile(fileName, filePath);  //加入缓存
+                fileHandlerService.addConvertedFile(uniqueKey, filePath);  //加入缓存
             }
-            try {
-                String  fileData = HtmlUtils.htmlEscape(textData(filePath,fileName));
-                model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes()));
-            } catch (IOException e) {
-                return otherFilePreview.notSupportedFile(model, fileAttribute, e.getLocalizedMessage());
-            }
-            return TXT_FILE_PREVIEW_PAGE;
         }
-        String  fileData = null;
+
         try {
-            String filePath = fileHandlerService.getConvertedFile(fileName);
-            fileData = HtmlUtils.htmlEscape(textData(filePath,fileName));
+            String fileData = HtmlUtils.htmlEscape(textData(filePath, fileName));
+            String textData = Base64Encoder.encode(fileData, Charset.forName("utf-8"));
+            model.addAttribute("textData", textData);
         } catch (IOException e) {
-            e.printStackTrace();
+            return otherFilePreview.notSupportedFile(model, fileAttribute, e.getLocalizedMessage());
         }
-        
-        // model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes()));
-        String textData = Base64Encoder.encode(fileData, Charset.forName("utf-8"));
-        model.addAttribute("textData", textData);
         return TXT_FILE_PREVIEW_PAGE;
     }
 
     private String textData(String filePath,String fileName) throws IOException {
-        File file = new File(filePath);
+        String path = FILE_DIR + filePath;
+        File file = new File(path);
         if (KkFileUtils.isIllegalFileName(fileName)) {
             return null;
         }
         if (!file.exists() || file.length() == 0) {
             return "";
         } else {
-            String charset = EncodingDetects.getJavaEncode(filePath);
+            String charset = EncodingDetects.getJavaEncode(path);
             if ("ASCII".equals(charset)) {
                 charset = StandardCharsets.US_ASCII.name();
             }
-            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), charset));
+            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(path), charset));
             StringBuilder result = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) {

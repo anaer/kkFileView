@@ -42,7 +42,7 @@ public class MediaFilePreviewImpl implements FilePreview {
         String mediaPath = "";
         // 下载视频文件 1.链接不是http开头， 浏览器不能直接访问 2. 是http开头 但是需要转码
         if (!StrUtil.startWithIgnoreCase(url, "http") || checkNeedConvert(fileAttribute.getSuffix())) {
-            ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileAttribute.getName());
+            ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileAttribute.getFileName());
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             } else {

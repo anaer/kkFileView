@@ -38,30 +38,31 @@ public class CadFilePreviewImpl implements FilePreview {
         // 预览Type，参数传了就取参数的，没传取系统默认
         String officePreviewType = fileAttribute.getOfficePreviewType() == null ? ConfigConstants.getOfficePreviewType() : fileAttribute.getOfficePreviewType();
         String baseUrl = BaseUrlFilter.getBaseUrl();
-        String fileName = fileAttribute.getName();
-        String pdfName = fileName.substring(0, fileName.lastIndexOf(".") + 1) + "pdf";
-        String outFilePath = KkFileUtils.getDateDir(FILE_DIR, pdfName);
+        String uniqueKey = fileAttribute.getUniqueKey();
+        // 下载时 使用uniqueKey生成文件名
+        String fileName = uniqueKey + "." + fileAttribute.getSuffix();
+        String pdfName = uniqueKey + ".pdf";
+        String outFilePath = null;
         // 判断之前是否已转换过，如果转换过，直接返回，否则执行转换
-        if (!fileHandlerService.listConvertedFiles().containsKey(pdfName) || !ConfigConstants.isCacheEnabled()) {
-            String filePath;
-            ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, null);
+        if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+            outFilePath = fileHandlerService.getConvertedFile(uniqueKey);
+        } else {
+            ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             }
-            filePath = response.getContent();
-            if (StringUtils.hasText(outFilePath)) {
-                boolean convertResult = fileHandlerService.cadToPdf(filePath, outFilePath);
-                if (!convertResult) {
-                    return otherFilePreview.notSupportedFile(model, fileAttribute, "cad文件转换异常，请联系管理员");
-                }
-                if (ConfigConstants.isCacheEnabled()) {
-                    // 加入缓存
-                    fileHandlerService.addConvertedFile(pdfName, fileHandlerService.getRelativePath(outFilePath));
-                }
+            String filePath = response.getContent();
+            outFilePath = KkFileUtils.getDateDir(FILE_DIR, pdfName);
+            boolean convertResult = fileHandlerService.cadToPdf(filePath, outFilePath);
+            if (!convertResult) {
+                return otherFilePreview.notSupportedFile(model, fileAttribute, "cad文件转换异常，请联系管理员");
+            }
+            if (ConfigConstants.isCacheEnabled()) {
+                fileHandlerService.addConvertedFile(uniqueKey, fileHandlerService.getRelativePath(outFilePath));
             }
         }
         if (baseUrl != null && (OFFICE_PREVIEW_TYPE_IMAGE.equals(officePreviewType) || OFFICE_PREVIEW_TYPE_ALL_IMAGES.equals(officePreviewType))) {
-            return getPreviewType(model, fileAttribute, officePreviewType, baseUrl, pdfName, outFilePath, fileHandlerService, OFFICE_PREVIEW_TYPE_IMAGE,otherFilePreview);
+            return getPreviewType(model, fileAttribute, officePreviewType, baseUrl, uniqueKey, outFilePath, fileHandlerService, OFFICE_PREVIEW_TYPE_IMAGE,otherFilePreview);
         }
         model.addAttribute("pdfUrl", KkFileUtils.getUrlRelativePath(outFilePath));
         return PDF_FILE_PREVIEW_PAGE;

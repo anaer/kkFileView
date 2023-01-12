@@ -1,5 +1,6 @@
 package cn.keking.service;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
@@ -62,15 +63,30 @@ public class FileHandlerService {
     }
 
     /**
-     * @return 已转换过的文件，根据文件名获取
+     * 是否是已转换过的文件
+     * @param key
+     * @return
+     */
+    public boolean isConvertedFile(String key){
+        boolean isConverted = cacheService.getPDFCache().containsKey(key);
+        if(isConverted){
+            logger.info("converted file cache hit:{}", key);
+        }
+        return isConverted;
+    }
+
+    /**
+     * @return 已转换过的文件
      */
     public String getConvertedFile(String key) {
-        return cacheService.getPDFCache(key);
+        String path = cacheService.getPDFCache(key);
+        logger.info("转换文件相对路径:{} {}", key, path);
+        return path;
     }
 
     /**
      * @param key pdf本地路径
-     * @return 已将pdf转换成图片的图片本地相对路径
+     * @return pdf图片数量
      */
     public Integer getConvertedPdfImage(String key) {
         return cacheService.getPdfImageCache(key);
@@ -229,12 +245,11 @@ public class FileHandlerService {
      * @param baseUrl 基础访问地址
      * @return 图片访问集合
      */
-    public List<String> pdf2jpg(String pdfFilePath, String pdfName, String baseUrl) {
+    public List<String> pdf2jpg(String pdfFilePath, String uniqueKey, String baseUrl) {
         List<String> imageUrls = new ArrayList<>();
-        Integer imageCount = this.getConvertedPdfImage(pdfFilePath);
+        Integer imageCount = this.getConvertedPdfImage(uniqueKey);
         logger.info("pdf:{} imageCount:{}", pdfFilePath, imageCount);
         String imageFileSuffix = ".jpg";
-        // String pdfFolder = pdfName.substring(0, pdfName.length() - 4);
         String urlPrefix = baseUrl;
 
         int index = pdfFilePath.lastIndexOf(".");
@@ -242,18 +257,11 @@ public class FileHandlerService {
 
         File path = new File(folder);
 
-        // try {
-        //     urlPrefix = baseUrl + URLEncoder.encode(pdfFolder, uriEncoding).replaceAll("\\+", "%20");
-        // } catch (UnsupportedEncodingException e) {
-        //     logger.error("UnsupportedEncodingException", e);
-        //     urlPrefix = baseUrl + pdfFolder;
-        // }
-
         if (imageCount != null && imageCount > 0) {
             String imageFilePath;
             for (int i = 0; i < imageCount; i++) {
                 imageFilePath = folder + File.separator + i + imageFileSuffix;
-                String relativePath = getRelativePath(imageFilePath);
+                String relativePath = KkFileUtils.getUrlRelativePath(imageFilePath);
                 imageUrls.add(urlPrefix + relativePath);
             }
             return imageUrls;
@@ -277,7 +285,7 @@ public class FileHandlerService {
                 try {
                     BufferedImage image = (BufferedImage) doc.getPageImage(pageIndex, GraphicsRenderingHints.SCREEN, org.icepdf.core.pobjects.Page.BOUNDARY_CROPBOX, rotation, scale);
                     ImageIOUtil.writeImage(image, imageFilePath, 105);
-                    imageUrls.add(urlPrefix + getRelativePath(imageFilePath));
+                    imageUrls.add(urlPrefix + KkFileUtils.getUrlRelativePath(imageFilePath));
                     image.flush();
                 } catch (Exception e){
                     // 本机因安全工具的防护规则出现过以下异常, 因此对此类异常 跳过继续处理
@@ -285,7 +293,7 @@ public class FileHandlerService {
                     logger.error("生成图片异常:{}", imageFilePath, e);
                 }
             }
-            this.addConvertedPdfImage(pdfFilePath, pageCount);
+            this.addConvertedPdfImage(uniqueKey, pageCount);
         } catch (IOException | PDFException | PDFSecurityException e) {
             logger.error("Convert pdf to jpg exception, pdfFilePath：{}", pdfFilePath, e);
         } finally {
@@ -341,17 +349,18 @@ public class FileHandlerService {
         FileAttribute attribute = new FileAttribute();
         String suffix;
         FileType type;
-        String fileName;
+        String name;
         String fullFileName = WebUtils.getUrlParameterReg(url, "fullfilename");
         if (StringUtils.hasText(fullFileName)) {
-            fileName = fullFileName;
+            name = fullFileName;
         } else {
-            fileName = WebUtils.getFileNameFromURL(url);
+            name = WebUtils.getFileNameFromURL(url);
         }
-        type = FileType.typeFromFileName(fileName);
-        suffix = KkFileUtils.suffixFromFileName(fileName);
+        type = FileType.typeFromFileName(name);
+        suffix = KkFileUtils.suffixFromFileName(name);
 
-        if (url.contains("?fileKey=")) {
+        boolean isCompress = url.contains("?fileKey=");
+        if (isCompress) {
             attribute.setSkipDownLoad(true);
         }
         String  urlStrr = url.toLowerCase();  //转换为小写对比
@@ -360,10 +369,18 @@ public class FileHandlerService {
             url =  url.substring(0,url.lastIndexOf("&"));  //删除添加的文件流内容
         }
         url = WebUtils.encodeUrlFileName(url);
-        fileName =  KkFileUtils.htmlEscape(fileName);  //文件名处理
+        name =  KkFileUtils.htmlEscape(name);  //文件名处理
         String uniqueKey = SecureUtil.md5(url);
+        String fileName = StrUtil.isNotBlank(suffix) ? uniqueKey + "." + suffix : uniqueKey;
         attribute.setType(type);
-        attribute.setName(fileName);
+        attribute.setName(name);
+        attribute.setFileName(fileName);
+
+        // 如果是压缩包文件 则不修改文件名
+        if(isCompress) {
+            attribute.setFileName(name);
+        }
+
         attribute.setSuffix(suffix);
         attribute.setUrl(url);
         attribute.setUniqueKey(uniqueKey);

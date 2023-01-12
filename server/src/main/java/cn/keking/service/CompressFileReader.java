@@ -1,5 +1,6 @@
 package cn.keking.service;
 
+import cn.hutool.core.util.StrUtil;
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileType;
 import cn.keking.utils.FileHeaderRar;
@@ -13,6 +14,8 @@ import com.github.junrar.rarfile.FileHeader;
 import net.sf.sevenzipjbinding.*;
 import net.sf.sevenzipjbinding.impl.RandomAccessFileInStream;
 import net.sf.sevenzipjbinding.simple.ISimpleInArchive;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -34,6 +37,8 @@ import java.util.stream.Collectors;
  */
 @Component
 public class CompressFileReader {
+
+    private static final Logger logger = LoggerFactory.getLogger(CompressFileReader.class);
 
     private static final Pattern pattern = Pattern.compile("^\\d+");
     private final FileHandlerService fileHandlerService;
@@ -138,8 +143,9 @@ public class CompressFileReader {
         String baseUrl = BaseUrlFilter.getBaseUrl();
         try {
             String urlRelativePath = KkFileUtils.getUrlRelativePath(filePath);
-            int index = urlRelativePath.lastIndexOf("/");
-            String path = urlRelativePath.substring(0, index);
+            int index = urlRelativePath.lastIndexOf(".");
+            String urlPath = urlRelativePath.substring(0, index) + "/";
+            String fileDir = StrUtil.replace(urlPath, "/", "\\");
 
             List<FileHeaderRar> items = getRar4Paths(filePath);
             String archiveFileName = fileHandlerService.getFileNameFromPath(filePath);
@@ -150,21 +156,21 @@ public class CompressFileReader {
                 String childName = originName;
                 boolean directory = header.getDirectory();
                 if (!directory) {
-                    childName = archiveFileName + "_" + originName;
+                    childName = fileDir + fullName;
                     headersToBeExtract.add(Collections.singletonMap(childName, header));
                 }
                 String parentName = getLast2FileName(fullName, archiveFileName);
                 FileType type = FileType.typeFromUrl(childName);
                 if (type.equals(FileType.PICTURE)) {
-                    imgUrls.add(baseUrl + path + "/" + childName);
+                    imgUrls.add(baseUrl + childName.replace("\\","/"));
                 }
                 FileNode node =
-                        new FileNode(originName, path + "/" + childName, parentName, new ArrayList<>(), directory, fileKey);
+                        new FileNode(originName, childName.replace("\\","/"), parentName, new ArrayList<>(), directory, fileKey);
                 addNodes(appender, parentName, node);
                 appender.put(childName, node);
             }
             fileHandlerService.putImgCache(fileKey, imgUrls);
-            executors.submit(new RarExtractorWorker(headersToBeExtract, filePath));
+            // executors.submit(new RarExtractorWorker(headersToBeExtract, filePath));
             return new ObjectMapper().writeValueAsString(appender.get(""));
         } catch (IOException e) {
             e.printStackTrace();
@@ -179,9 +185,13 @@ public class CompressFileReader {
         try {
             randomAccessFile = new RandomAccessFile(paths, "r");
             inArchive = SevenZip.openInArchive(null, new RandomAccessFileInStream(randomAccessFile));
-            String folderName = paths.substring(paths.lastIndexOf(File.separator) + 1);
-            String extractPath = paths.substring(0, paths.lastIndexOf(folderName));
-            inArchive.extract(null, false, new ExtractCallback(inArchive, extractPath, folderName + "_"));
+            // String folderName = paths.substring(paths.lastIndexOf(File.separator) + 1);
+            // String extractPath = paths.substring(0, paths.lastIndexOf(folderName));
+            int index = paths.lastIndexOf(".");
+            String extractPath = paths.substring(0, index) + "/";
+
+            // inArchive.extract(null, false, new ExtractCallback(inArchive, extractPath, folderName + "_"));
+            inArchive.extract(null, false, new ExtractCallback(inArchive, extractPath, ""));
             ISimpleInArchive simpleInArchive = inArchive.getSimpleInterface();
             itemPath = Arrays.stream(simpleInArchive.getArchiveItems()).map(o -> {
                                         try {
@@ -219,6 +229,11 @@ public class CompressFileReader {
                 }
             }
         }
+
+        if (itemPath == null) {
+            itemPath = new ArrayList<>();
+        }
+
         return itemPath;
     }
 
@@ -451,7 +466,8 @@ public class CompressFileReader {
         @Override
         public ISequentialOutStream getStream(int index, ExtractAskMode extractAskMode) throws SevenZipException {
             String filePath = inArchive.getStringProperty(index, PropID.PATH);
-            String real = folderName + filePath.substring(filePath.lastIndexOf(File.separator) + 1);
+            // String real = folderName + filePath.substring(filePath.lastIndexOf(File.separator) + 1);
+            String real = filePath;
             File f = new File(extractPath + real);
             f.delete();
             return data -> {

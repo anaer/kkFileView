@@ -1,5 +1,6 @@
 package cn.keking.config;
 
+import cn.keking.service.FilePreview;
 import cn.keking.utils.ConfigUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,7 @@ public class ConfigRefreshComponent {
                 String pdfBookmarkDisable;
                 boolean fileUploadDisable;
                 String tifPreviewType;
+                String pptPreviewPage;
 
                 while (true) {
                     FileReader fileReader = new FileReader(configFilePath);
@@ -78,6 +80,7 @@ public class ConfigRefreshComponent {
                     pdfBookmarkDisable = properties.getProperty("pdf.bookmark.disable", ConfigConstants.DEFAULT_PDF_BOOKMARK_DISABLE);
                     fileUploadDisable = Boolean.parseBoolean(properties.getProperty("file.upload.disable", ConfigConstants.DEFAULT_FILE_UPLOAD_DISABLE));
                     tifPreviewType = properties.getProperty("tif.preview.type", ConfigConstants.DEFAULT_TIF_PREVIEW_TYPE);
+                    pptPreviewPage = properties.getProperty("ppt.preview.page", FilePreview.OFFICE_PICTURE_FILE_PREVIEW_PAGE);
 
                     ConfigConstants.setCacheEnabledValueValue(cacheEnabled);
                     ConfigConstants.setSimTextValue(textArray);
@@ -96,10 +99,11 @@ public class ConfigRefreshComponent {
                     ConfigConstants.setPdfBookmarkDisableValue(pdfBookmarkDisable);
                     ConfigConstants.setFileUploadDisableValue(fileUploadDisable);
                     ConfigConstants.setTifPreviewTypeValue(tifPreviewType);
+                    ConfigConstants.setPptPreviewPageValue(pptPreviewPage);
                     setWatermarkConfig(properties);
                     bufferedReader.close();
                     fileReader.close();
-                    TimeUnit.SECONDS.sleep(1);
+                    TimeUnit.SECONDS.sleep(5);
                 }
             } catch (IOException | InterruptedException e) {
                 LOGGER.error("读取配置文件异常", e);
