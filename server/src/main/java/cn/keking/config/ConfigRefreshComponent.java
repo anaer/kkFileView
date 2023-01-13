@@ -1,13 +1,17 @@
 package cn.keking.config;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.keking.service.FilePreview;
 import cn.keking.utils.ConfigUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Properties;
@@ -22,6 +26,11 @@ import java.util.concurrent.TimeUnit;
 public class ConfigRefreshComponent {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRefreshComponent.class);
+    private static String lastFileMd5;
+    /**
+     * 配置文件刷新间隔秒数.
+     */
+    private static final int REFRESH_INTERVAL_SECONDS = 5;
 
     @PostConstruct
     void refresh() {
@@ -57,6 +66,20 @@ public class ConfigRefreshComponent {
                 String pptPreviewPage;
 
                 while (true) {
+                    // 检查配置文件的md5是否有变更, 判断是否需要重新加载配置
+                    try(FileInputStream fis = new FileInputStream(configFilePath)){
+                        String fileMd5 = DigestUtil.md5Hex(fis);
+                        if(StrUtil.equals(lastFileMd5, fileMd5)){
+                            TimeUnit.SECONDS.sleep(REFRESH_INTERVAL_SECONDS);
+                            continue;
+                        } else {
+                            LOGGER.info("配置文件更新:{} -> {}", lastFileMd5, fileMd5);
+                            lastFileMd5 = fileMd5;
+                        }
+                    } catch (Exception e) {
+                        LOGGER.warn("判断配置文件是否更新异常.", e);
+                    }
+
                     FileReader fileReader = new FileReader(configFilePath);
                     BufferedReader bufferedReader = new BufferedReader(fileReader);
                     properties.load(bufferedReader);
@@ -103,7 +126,7 @@ public class ConfigRefreshComponent {
                     setWatermarkConfig(properties);
                     bufferedReader.close();
                     fileReader.close();
-                    TimeUnit.SECONDS.sleep(5);
+                    TimeUnit.SECONDS.sleep(REFRESH_INTERVAL_SECONDS);
                 }
             } catch (IOException | InterruptedException e) {
                 LOGGER.error("读取配置文件异常", e);

@@ -80,7 +80,8 @@ public class FileHandlerService {
      */
     public String getConvertedFile(String key) {
         String path = cacheService.getPDFCache(key);
-        logger.info("转换文件相对路径:{} {}", key, path);
+        // 如果是压缩包, 缓存的是文件树, 内容有点长 所以设置限制长度100
+        logger.info("cache file:{} {}", key, StrUtil.maxLength(path, 100));
         return path;
     }
 

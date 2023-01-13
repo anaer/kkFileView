@@ -115,7 +115,10 @@ public class FileController {
         List<Map<String, String>> list = new ArrayList<>();
         File file = new File(fileDir + demoPath);
         if (file.exists()) {
-            Arrays.stream(Objects.requireNonNull(file.listFiles())).sorted(new FindFile.FileLastModifiedTimeComparator(false)).forEach(file1 -> {
+            Arrays.stream(Objects.requireNonNull(file.listFiles()))
+            .filter(f -> !f.isDirectory()) // 过滤目录
+            .sorted(new FindFile.FileLastModifiedTimeComparator(false)) // 按文件修改时间降序, 最新的在前面
+            .forEach(file1 -> {
                 Map<String, String> fileName = new HashMap<>();
                 fileName.put("fileName", demoDir + "/" + file1.getName());
                 list.add(fileName);

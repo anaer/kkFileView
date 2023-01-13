@@ -34,16 +34,20 @@ public class CompressFilePreviewImpl implements FilePreview {
         String uniqueKey = fileAttribute.getUniqueKey();
 
         String fileTree;
-        // 判断文件名是否存在(redis缓存读取)
-        if (!StringUtils.hasText(fileHandlerService.getConvertedFile(uniqueKey))  || !ConfigConstants.isCacheEnabled()) {
+
+        if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+            fileTree = fileHandlerService.getConvertedFile(uniqueKey);
+        } else {
             ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);
             if (response.isFailure()) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             }
             String filePath = response.getContent();
             fileTree = compressFileReader.unRar(filePath, uniqueKey);
-        } else {
-            fileTree = fileHandlerService.getConvertedFile(uniqueKey);
+
+            if(ConfigConstants.isCacheEnabled()) {
+                fileHandlerService.addConvertedFile(uniqueKey, fileTree);
+            }
         }
         if (fileTree != null && !"null".equals(fileTree)) {
             model.addAttribute("fileTree", fileTree);

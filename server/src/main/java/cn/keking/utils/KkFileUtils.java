@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.HtmlUtils;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.keking.config.ConfigConstants;
 import java.io.File;
 import java.net.URL;
@@ -186,6 +187,10 @@ public class KkFileUtils {
         // 月份从0开始
         int month = DateUtil.thisMonth() + 1; 
         int day = DateUtil.thisDayOfMonth();
+
+        // 本机调试用, 按秒生成目录, 便于测试缓存使用情况
+        // int second = DateUtil.thisSecond();
+        // return fileDir + year + File.separator + (month < 10 ? "0" + month : month) + File.separator + day + File.separator + second + File.separator + fileName;
 
         return fileDir + year + File.separator + (month < 10 ? "0" + month : month) + File.separator + day + File.separator + fileName;
     }

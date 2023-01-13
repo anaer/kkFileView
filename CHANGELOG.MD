@@ -1,6 +1,27 @@
-# TODO
-1. 同一文件 不同链接 处理
-2. 配置文件刷新调整
+# 2023.1.13
+1. 检查配置文件的md5是否有变更, 判断是否需要重新加载配置
+2. 同一文件 不同链接, 业务场景上这种情况应该不多, 暂不处理
+   处理方法: 
+   ```
+   1. 下载文件后, 计算文件的md5, 检查文件的md5是否存在
+   1.1 md5不存在, 记录md5->uniqueKey的映射关系, 继续原逻辑
+   1.2 md5已存在, 查询到uniqueKey1, 复制一份uniqueKey1的相关缓存保存本次的uniqueKey中, 后续按已存在缓存处理
+   ```
+3. 缓存说明
+
+| 缓存key                        | key                  | value                                | desc                                            |
+| ------------------------------ | -------------------- | ------------------------------------ | ----------------------------------------------- |
+| converted-preview-pdf-file     | uniqueKey = md5(url) | 文件相对路径 <br>压缩包:存的文件树 <br>视频:存的转码后视频路径 | (office, pdf, cad, 纯文本文件, 压缩包)          |
+| converted-preview-pdfimgs-file | uniqueKey            | 图片数量                             |
+| converted-preview-imgs-file    | uniqueKey            | 压缩包内图片文件访问url列表          | (压缩包)                                        |
+| converted-preview-media-file   | 原文件链接           | 转换后的视频文件链接                 |  后面缓存调整后, 暂时没用                      |
+| convert-task                   | --------             | 转码队列url(url编码)                 | /addTask api接口入队, (压缩包, office, cad文件) |
+
+PS: uniqueKey=md5(url)   使用md5(url)作为uniqueKey, 唯一表示, 用于区分不同链接, 对于同一链接文件更新的情况 暂不考虑
+
+4. /listFiles 过滤目录, 页面上选择目录进行预览时, 500错误
+5. tiff文件预览 添加缓存处理, 原逻辑直接判断文件是否存在, 仅支持文件都放file/目录下, 对于动态多级目录不支持
+6. media预览 缓存调整, 直接在`converted-preview-pdf-file`缓存存储uniqueKey与转码后视频相对路径的关系
 
 ## 2023.1.12
 1. 提取PPT浏览方式配置:`ppt.preview.page`, 取值:ppt-PPT方式,左侧有列表, officePicture-图片浏览模式 默认图片浏览模式

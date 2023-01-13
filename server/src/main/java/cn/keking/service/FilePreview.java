@@ -19,7 +19,7 @@ public interface FilePreview {
     String OFD_FILE_PREVIEW_PAGE = "ofd";
     String SVG_FILE_PREVIEW_PAGE = "svg";
     String Online3D_FILE_PAGE = "online3D";
-    String EpubFilePreviewImpl = "epub";
+    String EPUB_FILE_PREVIEW_PAGE = "epub";
     String XMIND_FILE_PREVIEW_PAGE = "xmind";
     String EML_FILE_PREVIEW_PAGE = "eml";
     String OFFICE_PICTURE_FILE_PREVIEW_PAGE = "officePicture";
