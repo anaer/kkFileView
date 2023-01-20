@@ -205,7 +205,11 @@ public class KkFileUtils {
      */
     public static String getUrlRelativePath(String absolutePath) {
         String fileDir = ConfigConstants.getFileDir();
-        return absolutePath.substring(fileDir.length()).replace("\\", "/");
+        String relativePath = absolutePath.substring(fileDir.length()).replace("\\", "/");
+        while(StrUtil.startWith(relativePath, "/")) {
+            relativePath = StrUtil.removePrefix(relativePath, "/");
+        }
+        return relativePath;
     }
 
 }

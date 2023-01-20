@@ -111,7 +111,11 @@ public class FileHandlerService {
      * @return 相对路径
      */
     public String getRelativePath(String absolutePath) {
-        return absolutePath.substring(fileDir.length());
+        String relativePath = absolutePath.substring(fileDir.length());
+        while(StrUtil.startWith(relativePath, File.separator)) {
+            relativePath = StrUtil.removePrefix(relativePath, File.separator);
+        }
+        return relativePath;
     }
 
     /**
