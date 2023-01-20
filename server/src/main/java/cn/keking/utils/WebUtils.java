@@ -114,6 +114,7 @@ public class WebUtils {
     public static String getFilePathFromURL(String url) {
         String baseUrl = ConfigConstants.getBaseUrl();
 
+        url = URLDecoder.decode(url, Charset.forName("utf-8"));
         // 如果是baseUrl开头的, 直接采用截去操作
         if(StrUtil.startWith(url, baseUrl)) {
             url = StrUtil.removePrefix(url, baseUrl);
@@ -122,7 +123,6 @@ public class WebUtils {
             }
         } else {
             try {
-                url = URLDecoder.decode(url, Charset.forName("utf-8"));
                 URL urlObj = new URL(url);
                 url = urlObj.getPath().substring(1);
             } catch (MalformedURLException e) {
