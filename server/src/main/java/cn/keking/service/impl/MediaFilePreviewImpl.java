@@ -42,6 +42,7 @@ public class MediaFilePreviewImpl implements FilePreview {
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
         String uniqueKey = fileAttribute.getUniqueKey();
         String suffix = fileAttribute.getSuffix();
+        Boolean refresh = fileAttribute.getRefresh();
 
         boolean isHttp = StrUtil.startWithIgnoreCase(url, "http");
 
@@ -51,8 +52,11 @@ public class MediaFilePreviewImpl implements FilePreview {
             return MEDIA_FILE_PREVIEW_PAGE;
         }
 
+        // 是否使用缓存, 配置开启缓存 且 未传强制刷新参数 同时 文件预览过
+        boolean useCache = fileHandlerService.isUseCache(uniqueKey, refresh);
+
         String mediaPath = null;
-        if (ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+        if (useCache) {
             mediaPath = fileHandlerService.getConvertedFile(uniqueKey);
         } else {
             boolean needConvert = checkNeedConvert(fileAttribute.getSuffix());

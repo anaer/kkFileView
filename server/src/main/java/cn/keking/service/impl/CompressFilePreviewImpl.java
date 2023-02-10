@@ -32,10 +32,14 @@ public class CompressFilePreviewImpl implements FilePreview {
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
         String fileName = fileAttribute.getFileName();
         String uniqueKey = fileAttribute.getUniqueKey();
+        Boolean refresh = fileAttribute.getRefresh();
 
         String fileTree;
 
-        if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+        // 是否使用缓存, 配置开启缓存 且 未传强制刷新参数 同时 文件预览过
+        boolean useCache = fileHandlerService.isUseCache(uniqueKey, refresh);
+
+        if(useCache) {
             fileTree = fileHandlerService.getConvertedFile(uniqueKey);
         } else {
             ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);

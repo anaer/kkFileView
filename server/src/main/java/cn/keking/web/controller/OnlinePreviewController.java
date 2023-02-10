@@ -65,7 +65,7 @@ public class OnlinePreviewController {
         FileAttribute fileAttribute = fileHandlerService.getFileAttribute(fileUrl, req);
         model.addAttribute("file", fileAttribute);
         FilePreview filePreview = previewFactory.get(fileAttribute);
-        logger.info("预览文件url：{}，previewType：{}", fileUrl, fileAttribute.getType());
+        logger.info("预览文件url:{},previewType:{},uniqueKey:{}", fileUrl, fileAttribute.getType(), fileAttribute.getUniqueKey());
         return filePreview.filePreviewHandle(fileUrl, model, fileAttribute);
     }
 

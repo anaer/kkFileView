@@ -52,11 +52,15 @@ public class OfficeFilePreviewImpl implements FilePreview {
         String uniqueKey = fileAttribute.getUniqueKey();
         boolean isHtml = suffix.equalsIgnoreCase("xls") || suffix.equalsIgnoreCase("xlsx") || suffix.equalsIgnoreCase("csv");
         String outFilePath = null;
+        Boolean refresh = fileAttribute.getRefresh();
+
+        // 是否使用缓存, 配置开启缓存 且 未传强制刷新参数 同时 文件预览过
+        boolean useCache = fileHandlerService.isUseCache(uniqueKey, refresh);
 
         /*
          * 缓存判断-如果文件已经进行转换过，就直接返回，否则执行转换
          */
-        if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+        if(useCache) {
             String relativePath = fileHandlerService.getConvertedFile(uniqueKey);
             outFilePath = FILE_DIR + relativePath;
         } else {
@@ -100,18 +104,21 @@ public class OfficeFilePreviewImpl implements FilePreview {
         }
 
         if (!isHtml && baseUrl != null && (OFFICE_PREVIEW_TYPE_IMAGE.equals(officePreviewType) || OFFICE_PREVIEW_TYPE_ALL_IMAGES.equals(officePreviewType))) {
-            return getPreviewType(model, fileAttribute, officePreviewType, baseUrl, uniqueKey, outFilePath, fileHandlerService, OFFICE_PREVIEW_TYPE_IMAGE, otherFilePreview);
+            return getPreviewType(model, fileAttribute, officePreviewType, baseUrl, outFilePath, fileHandlerService, OFFICE_PREVIEW_TYPE_IMAGE, otherFilePreview);
         }
 
         model.addAttribute("pdfUrl", KkFileUtils.getUrlRelativePath(outFilePath));
         return isHtml ? EXEL_FILE_PREVIEW_PAGE : PDF_FILE_PREVIEW_PAGE;
     }
 
-    static String getPreviewType(Model model, FileAttribute fileAttribute, String officePreviewType, String baseUrl, String uniqueKey, String outFilePath, FileHandlerService fileHandlerService, String officePreviewTypeImage, OtherFilePreviewImpl otherFilePreview) {
+    static String getPreviewType(Model model, FileAttribute fileAttribute, String officePreviewType, String baseUrl, String outFilePath, FileHandlerService fileHandlerService, String officePreviewTypeImage, OtherFilePreviewImpl otherFilePreview) {
         String pptPreviewType = ConfigConstants.getPptPreviewPage();
         String suffix = fileAttribute.getSuffix();
+        String uniqueKey = fileAttribute.getUniqueKey();
+        Boolean refresh = fileAttribute.getRefresh();
+        boolean useCache = fileHandlerService.isUseCache(uniqueKey, refresh);
         boolean isPPT = suffix.equalsIgnoreCase("ppt") || suffix.equalsIgnoreCase("pptx");
-        List<String> imageUrls = fileHandlerService.pdf2jpg(outFilePath, uniqueKey, baseUrl);
+        List<String> imageUrls = fileHandlerService.pdf2jpg(outFilePath, uniqueKey, baseUrl, useCache);
         if (imageUrls == null || imageUrls.size() < 1) {
             return otherFilePreview.notSupportedFile(model, fileAttribute, "office转图片异常，请联系管理员");
         }

@@ -60,6 +60,10 @@ public class TiffFilePreviewImpl implements FilePreview {
 
         // 因tif支持多种预览类型, 所以调整uniqueKey取值
         String uniqueKey = fileAttribute.getUniqueKey() + "_" + tifPreviewType;
+        Boolean refresh = fileAttribute.getRefresh();
+
+        // 是否使用缓存, 配置开启缓存 且 未传强制刷新参数 同时 文件预览过
+        boolean useCache = fileHandlerService.isUseCache(uniqueKey, refresh);
 
         if ("tif".equalsIgnoreCase(tifPreviewType)) {
             pictureFilePreview.filePreviewHandle(url, model, fileAttribute);
@@ -75,7 +79,7 @@ public class TiffFilePreviewImpl implements FilePreview {
         } else if ("jpg".equalsIgnoreCase(tifPreviewType)) {
             // 将返回页面的图片url的list对象
             List<String> imagePaths = new ArrayList<>();
-            if (ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+            if (useCache) {
                 String cacheStr = fileHandlerService.getConvertedFile(uniqueKey);
                 imagePaths = JSONUtil.toList(cacheStr, String.class);
             } else {
@@ -110,7 +114,7 @@ public class TiffFilePreviewImpl implements FilePreview {
             }
         } else if ("pdf".equalsIgnoreCase(tifPreviewType)) {
             String relativePath = null;
-            if (ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)) {
+            if (useCache) {
                 relativePath = fileHandlerService.getConvertedFile(uniqueKey);
             } else {
                 ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, name);

@@ -38,10 +38,14 @@ public class PdfFilePreviewImpl implements FilePreview {
         String uniqueKey = fileAttribute.getUniqueKey();
         String pdfName = uniqueKey + ".pdf";
         String outFilePath = null;
+        Boolean refresh = fileAttribute.getRefresh();
+
+        // 是否使用缓存, 配置开启缓存 且 未传强制刷新参数 同时 文件预览过
+        boolean useCache = fileHandlerService.isUseCache(uniqueKey, refresh);
 
         if (OfficeFilePreviewImpl.OFFICE_PREVIEW_TYPE_IMAGE.equals(officePreviewType) || OfficeFilePreviewImpl.OFFICE_PREVIEW_TYPE_ALL_IMAGES.equals(officePreviewType)) {
             // 如果启用缓存, 而且文件已转换过
-            if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)){
+            if(useCache){
                 String relativePath = fileHandlerService.getConvertedFile(uniqueKey);
                 outFilePath = FILE_DIR + relativePath;
             } else {
@@ -55,7 +59,7 @@ public class PdfFilePreviewImpl implements FilePreview {
                     fileHandlerService.addConvertedFile(uniqueKey, fileHandlerService.getRelativePath(outFilePath));
                 }
             }
-            List<String> imageUrls = fileHandlerService.pdf2jpg(outFilePath, uniqueKey, baseUrl);
+            List<String> imageUrls = fileHandlerService.pdf2jpg(outFilePath, uniqueKey, baseUrl, useCache);
             if (imageUrls == null || imageUrls.size() < 1) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, "pdf转图片异常，请联系管理员");
             }
@@ -69,7 +73,7 @@ public class PdfFilePreviewImpl implements FilePreview {
         } else {
             // 不是http开头，浏览器不能直接访问，需下载到本地
             if (url != null && !url.toLowerCase().startsWith("http")) {
-                if(ConfigConstants.isCacheEnabled() && fileHandlerService.isConvertedFile(uniqueKey)){
+                if(useCache){
                     String relativePath = fileHandlerService.getConvertedFile(uniqueKey);
                     model.addAttribute("pdfUrl", StrUtil.replace(relativePath, "\\", "/"));
                 } else {

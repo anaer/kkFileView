@@ -26,6 +26,10 @@ public class FileAttribute {
     private String tifPreviewType;
     private Boolean skipDownLoad = false;
     private String uniqueKey;
+    /**
+     * 是否更新缓存, 即不使用缓存 重新预览
+     */
+    private Boolean refresh = false;
 
     public FileAttribute() {
     }
@@ -141,4 +145,12 @@ public class FileAttribute {
         this.fileName = fileName;
     }
 
+    public Boolean getRefresh() {
+        return refresh;
+    }
+
+    public void setRefresh(Boolean refresh) {
+        this.refresh = refresh;
+    }
+     
 }

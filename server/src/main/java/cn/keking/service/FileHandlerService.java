@@ -1,5 +1,6 @@
 package cn.keking.service;
 
+import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import cn.keking.config.ConfigConstants;
@@ -12,9 +13,6 @@ import com.aspose.cad.Color;
 import com.aspose.cad.fileformats.cad.CadDrawTypeMode;
 import com.aspose.cad.imageoptions.CadRasterizationOptions;
 import com.aspose.cad.imageoptions.PdfOptions;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.rendering.ImageType;
-import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +23,6 @@ import org.springframework.util.StringUtils;
 import javax.servlet.http.HttpServletRequest;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,12 +64,23 @@ public class FileHandlerService {
      * @param key
      * @return
      */
-    public boolean isConvertedFile(String key){
-        boolean isConverted = cacheService.getPDFCache().containsKey(key);
-        if(isConverted){
-            logger.info("converted file cache hit:{}", key);
+    private boolean isConvertedFile(String key){
+        return cacheService.getPDFCache().containsKey(key);
+    }
+
+    /**
+     * 判断是否使用缓存
+     * @param uniqueKey 唯一key
+     * @param refresh 是否强制刷新
+     * @return 是否使用缓存
+     */
+    public boolean isUseCache(String uniqueKey, Boolean refresh) {
+        boolean useCache = ConfigConstants.isCacheEnabled() && (!BooleanUtil.isTrue(refresh) && isConvertedFile(uniqueKey));
+        if(useCache) {
+            logger.info("converted file cache hit:{}", uniqueKey);
         }
-        return isConverted;
+
+        return useCache;
     }
 
     /**
@@ -121,41 +129,41 @@ public class FileHandlerService {
     /**
      * 添加转换后PDF缓存
      *
-     * @param fileName pdf文件名
+     * @param uniqueKey 唯一key
      * @param value    缓存相对路径
      */
-    public void addConvertedFile(String fileName, String value) {
-        cacheService.putPDFCache(fileName, value);
+    public void addConvertedFile(String uniqueKey, String value) {
+        cacheService.putPDFCache(uniqueKey, value);
     }
 
     /**
-     * 添加转换后图片组缓存
+     * 添加转换后图片数缓存
      *
-     * @param pdfFilePath pdf文件绝对路径
+     * @param uniqueKey 唯一key
      * @param num         图片张数
      */
-    public void addConvertedPdfImage(String pdfFilePath, int num) {
-        cacheService.putPdfImageCache(pdfFilePath, num);
+    public void addConvertedPdfImage(String uniqueKey, int num) {
+        cacheService.putPdfImageCache(uniqueKey, num);
     }
 
     /**
      * 获取redis中压缩包内图片文件
      *
-     * @param fileKey fileKey
+     * @param uniqueKey 唯一key
      * @return 图片文件访问url列表
      */
-    public List<String> getImgCache(String fileKey) {
-        return cacheService.getImgCache(fileKey);
+    public List<String> getImgCache(String uniqueKey) {
+        return cacheService.getImgCache(uniqueKey);
     }
 
     /**
      * 设置redis中压缩包内图片文件
      *
-     * @param fileKey fileKey
+     * @param uniqueKey 唯一key
      * @param imgs    图片文件访问url列表
      */
-    public void putImgCache(String fileKey, List<String> imgs) {
-        cacheService.putImgCache(fileKey, imgs);
+    public void putImgCache(String uniqueKey, List<String> imgs) {
+        cacheService.putImgCache(uniqueKey, imgs);
     }
 
     /**
@@ -197,63 +205,8 @@ public class FileHandlerService {
      * @param baseUrl 基础访问地址
      * @return 图片访问集合
      */
-    public List<String> pdf2jpgbak(String pdfFilePath, String pdfName, String baseUrl) {
+    public List<String> pdf2jpg(String pdfFilePath, String uniqueKey, String baseUrl, boolean useCache) {
         List<String> imageUrls = new ArrayList<>();
-        Integer imageCount = this.getConvertedPdfImage(pdfFilePath);
-        String imageFileSuffix = ".jpg";
-        String pdfFolder = pdfName.substring(0, pdfName.length() - 4);
-        String urlPrefix;
-        try {
-            urlPrefix = baseUrl + URLEncoder.encode(pdfFolder, uriEncoding).replaceAll("\\+", "%20");
-        } catch (UnsupportedEncodingException e) {
-            logger.error("UnsupportedEncodingException", e);
-            urlPrefix = baseUrl + pdfFolder;
-        }
-        if (imageCount != null && imageCount > 0) {
-            for (int i = 0; i < imageCount; i++) {
-                imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
-            }
-            return imageUrls;
-        }
-        try {
-            File pdfFile = new File(pdfFilePath);
-            PDDocument doc = PDDocument.load(pdfFile);
-            int pageCount = doc.getNumberOfPages();
-            PDFRenderer pdfRenderer = new PDFRenderer(doc);
-
-            int index = pdfFilePath.lastIndexOf(".");
-            String folder = pdfFilePath.substring(0, index);
-
-            File path = new File(folder);
-            if (!path.exists() && !path.mkdirs()) {
-                logger.error("创建转换文件【{}】目录失败，请检查目录权限！", folder);
-            }
-            String imageFilePath;
-            for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-                imageFilePath = folder + File.separator + pageIndex + imageFileSuffix;
-                BufferedImage image = pdfRenderer.renderImageWithDPI(pageIndex, 105, ImageType.RGB);
-                ImageIOUtil.writeImage(image, imageFilePath, 105);
-                imageUrls.add(urlPrefix + "/" + pageIndex + imageFileSuffix);
-            }
-            doc.close();
-            this.addConvertedPdfImage(pdfFilePath, pageCount);
-        } catch (IOException e) {
-            logger.error("Convert pdf to jpg exception, pdfFilePath：{}", pdfFilePath, e);
-        }
-        return imageUrls;
-    }
-
-    /**
-     *  pdf文件转换成jpg图片集
-     * @param pdfFilePath pdf文件路径
-     * @param pdfName pdf文件名称
-     * @param baseUrl 基础访问地址
-     * @return 图片访问集合
-     */
-    public List<String> pdf2jpg(String pdfFilePath, String uniqueKey, String baseUrl) {
-        List<String> imageUrls = new ArrayList<>();
-        Integer imageCount = this.getConvertedPdfImage(uniqueKey);
-        logger.info("pdf:{} imageCount:{}", pdfFilePath, imageCount);
         String imageFileSuffix = ".jpg";
         String urlPrefix = baseUrl;
 
@@ -262,14 +215,18 @@ public class FileHandlerService {
 
         File path = new File(folder);
 
-        if (imageCount != null && imageCount > 0) {
-            String imageFilePath;
-            for (int i = 0; i < imageCount; i++) {
-                imageFilePath = folder + File.separator + i + imageFileSuffix;
-                String relativePath = KkFileUtils.getUrlRelativePath(imageFilePath);
-                imageUrls.add(urlPrefix + relativePath);
+        if(useCache) {
+            Integer imageCount = this.getConvertedPdfImage(uniqueKey);
+            logger.info("pdf:{} imageCount:{}", pdfFilePath, imageCount);
+            if (imageCount != null && imageCount > 0) {
+                String imageFilePath;
+                for (int i = 0; i < imageCount; i++) {
+                    imageFilePath = folder + File.separator + i + imageFileSuffix;
+                    String relativePath = KkFileUtils.getUrlRelativePath(imageFilePath);
+                    imageUrls.add(urlPrefix + relativePath);
+                }
+                return imageUrls;
             }
-            return imageUrls;
         }
 
         float scale = 1f;//缩放比例
@@ -413,6 +370,11 @@ public class FileHandlerService {
             if (StringUtils.hasText(userToken)) {
                 attribute.setUserToken(userToken);
             }
+
+            String refresh = req.getParameter("refresh");
+            if (StringUtils.hasText(refresh)) {
+                attribute.setRefresh(BooleanUtil.toBoolean(refresh));
+            }
         }
 
         return attribute;
@@ -440,4 +402,5 @@ public class FileHandlerService {
     public String getConvertedMedias(String key) {
         return cacheService.getMediaConvertCache(key);
     }
+
 }

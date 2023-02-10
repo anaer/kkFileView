@@ -80,9 +80,9 @@ public class CacheServiceRedisImpl implements CacheService {
     }
 
     @Override
-    public void putPdfImageCache(String pdfFilePath, int num) {
+    public void putPdfImageCache(String key, int num) {
         RMapCache<String, Integer> convertedList = redissonClient.getMapCache(FILE_PREVIEW_PDF_IMGS_KEY);
-        convertedList.fastPut(pdfFilePath, num);
+        convertedList.fastPut(key, num);
     }
 
     @Override
